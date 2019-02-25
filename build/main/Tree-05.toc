@@ -1,0 +1,5 @@
+('/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-packages/appdirs-1.4.3-py3.7.egg',
+ None,
+ {'*.pyc', '*.so', '*.py', '*.cpython-37m-darwin.so', '*.abi3.so', 'EGG-INFO'},
+ 'DATA',
+ [])
