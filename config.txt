@@ -1,4 +1,16 @@
+192.168.0.105
+2000
+admin
+Supervisor
 192.168.15.42
 80
+admin
+Supervisor
+192.168.15.44
+80
+admin
+Supervisor
+192.168.15.52
+2000
 admin
 Supervisor

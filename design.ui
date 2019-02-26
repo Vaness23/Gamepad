@@ -20,10 +20,10 @@
    <widget class="QSplitter" name="splitter_2">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>20</y>
-      <width>460</width>
-      <height>360</height>
+      <x>10</x>
+      <y>10</y>
+      <width>481</width>
+      <height>381</height>
      </rect>
     </property>
     <property name="orientation">
@@ -34,6 +34,7 @@
       <bool>true</bool>
      </property>
     </widget>
+    <widget class="QComboBox" name="comboBox"/>
     <widget class="QSplitter" name="splitter">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>

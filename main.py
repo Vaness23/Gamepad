@@ -2,10 +2,14 @@ import sys  # нужен для передачи argv в QApplication
 from PyQt5 import QtWidgets
 import design
 import pygame
-from onvif import ONVIFCamera, ONVIFService
+from onvif import ONVIFCamera, ONVIFService, ONVIFError
 from time import sleep
 import datetime
 import zeep
+X_AXIS = 0
+Y_AXIS = 1
+THR_AXIS = 2
+Z_AXIS = 3
 
 
 def zeep_pythonvalue(self, xmlvalue):  # нужно для корректной работы камеры
@@ -37,11 +41,12 @@ class Application(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def connect(self):
         self.add_log("Connecting...")
-        ip, port, login, password = open_config()
-        self.add_log("IP: " + ip)
-        self.add_log("Port: " + str(port))
-        self.add_log("Login: " + login)
-        self.add_log("Password: " + password)
+        ip, port, login, password, length = open_config()
+        num = self.comboBox.currentIndex()
+        self.add_log("IP: " + ip[num])
+        self.add_log("Port: " + str(port[num]))
+        self.add_log("Login: " + login[num])
+        self.add_log("Password: " + password[num])
 
         # подключение джойстика
         pygame.init()
@@ -50,15 +55,32 @@ class Application(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.add_log("Number of connected joysticks: " + str(pygame.joystick.get_count()))
         else:
             self.add_log("Joystick is uninitialized or not connected")
+            return
 
-        joystick = pygame.joystick.Joystick(0)  # создаем новый объект joystick с id = 0
+        try:
+            joystick = pygame.joystick.Joystick(0)  # создаем новый объект joystick с id = 0
+        except pygame.error:
+            self.add_log("Joystick is uninitialized or not connected")
+            pygame.close()
+            return
+
         joystick.init()  # инициализация джойстика
         self.add_log("Joystick system name: " + joystick.get_name())  # вывод имени джойстика
 
         mycam = None
+        attempts = 3
         while mycam is None:
-            mycam = ONVIFCamera(ip, port, login, password)  # инициализация камеры
             self.add_log("Connecting to the camera...")
+            try:
+                mycam = ONVIFCamera(ip[num], port[num], login[num], password[num])  # инициализация камеры
+            except ONVIFError:
+                self.add_log("Connection failed")
+            attempts -= 1
+            if attempts == 0:
+                del mycam
+                pygame.quit()
+                return
+
         self.add_log("Camera is connected")
         self.connectBtn.setDisabled(True)
         self.disconnectBtn.setEnabled(True)
@@ -112,6 +134,18 @@ class Application(QtWidgets.QMainWindow, design.Ui_MainWindow):
         ZMAX = ptz_configuration_options.Spaces.ContinuousZoomVelocitySpace[0].XRange.Max
         ZMIN = ptz_configuration_options.Spaces.ContinuousZoomVelocitySpace[0].XRange.Min
 
+        # self.add_log("XMAX: " + str(XMAX))
+        # self.add_log("XMIN: " + str(XMIN))
+        # self.add_log("YMAX: " + str(YMAX))
+        # self.add_log("YMIN: " + str(YMIN))
+        # self.add_log("ZMAX: " + str(ZMAX))
+        # self.add_log("ZMIN: " + str(ZMIN))
+
+        s = -1
+        while s < 1:
+        	print("%2g maps to %g" % (s, maprange((-1, 1), (XMIN, XMAX), s)))
+        	s += 0.1
+
         global throttle
 
         isMoving = False
@@ -127,7 +161,7 @@ class Application(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if event.type == pygame.QUIT:
                     self.done = True
 
-            throttle = (-(joystick.get_axis(3))) / 2 + 0.5
+            throttle = (-(joystick.get_axis(THR_AXIS))) / 2 + 0.5
 
             ptz_configuration.DefaultPTZSpeed.PanTilt.x = throttle * XMAX
             ptz_configuration.DefaultPTZSpeed.PanTilt.y = throttle * YMAX
@@ -147,49 +181,37 @@ class Application(QtWidgets.QMainWindow, design.Ui_MainWindow):
             irequest.ImagingSettings = img_settings
             irequest.ForcePersistence = False
 
-            if joystick.get_axis(0) > 0.2:
-                move_right(ptz, request, joystick)
+            if joystick.get_axis(X_AXIS) > 0.1 or joystick.get_axis(X_AXIS) < -0.1:
+                move_horizontal(ptz, request, joystick)
+                print(str(maprange((-1, 1), (XMIN, XMAX), joystick.get_axis(X_AXIS))))
                 isMoving = True
                 OX = True
 
-            if joystick.get_axis(0) < -0.2:
-                move_left(ptz, request, joystick)
-                isMoving = True
-                OX = True
-
-            if joystick.get_axis(1) > 0.2:
-                move_up(ptz, request, joystick)
+            if joystick.get_axis(Y_AXIS) > 0.2 or joystick.get_axis(Y_AXIS) < -0.2:
+                move_vertical(ptz, request, joystick)
+                print(str(maprange((-1, 1), (YMIN, YMAX), joystick.get_axis(Y_AXIS))))
                 isMoving = True
                 OY = True
 
-            if joystick.get_axis(1) < -0.2:
-                move_down(ptz, request, joystick)
-                isMoving = True
-                OY = True
-
-            if joystick.get_axis(4) > 0.2:
-                zoom_in(ptz, request, joystick)
-                isMoving = True
-                OZ = True
-
-            if joystick.get_axis(4) < -0.2:
-                zoom_out(ptz, request, joystick)
+            if joystick.get_axis(Z_AXIS) > 0.3 or joystick.get_axis(Z_AXIS) < -0.3:
+                zoom(ptz, request, joystick)
+                print(str(maprange((-1, 1), (ZMIN, ZMAX), joystick.get_axis(Z_AXIS))))
                 isMoving = True
                 OZ = True
 
             if isMoving:
 
-                if -0.2 <= joystick.get_axis(0) <= 0.2 and OX:
+                if -0.1 <= joystick.get_axis(X_AXIS) <= 0.1 and OX:
                     ptz.Stop({'ProfileToken': request.ProfileToken})
                     isMoving = False
                     OX = False
 
-                if -0.2 <= joystick.get_axis(1) <= 0.2 and OY:
+                if -0.1 <= joystick.get_axis(Y_AXIS) <= 0.2 and OY:
                     ptz.Stop({'ProfileToken': request.ProfileToken})
                     isMoving = False
                     OY = False
 
-                if -0.2 <= joystick.get_axis(4) <= 0.2 and OZ:
+                if -0.1 <= joystick.get_axis(Z_AXIS) <= 0.3 and OZ:
                     ptz.Stop({'ProfileToken': request.ProfileToken})
                     isMoving = False
                     OZ = False
@@ -277,17 +299,17 @@ class Application(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if not self.focusMode:
                 # увеличение яркости (6 кнопка)
                 if joystick.get_button(5) == 1:
-                    if img_settings.Brightness < 100:
-                        img_settings.Brightness += 5
-                        if img_settings.Brightness > 100:
-                            img_settings.Brightness = 100
+                    if img_settings.Brightness < 10:
+                        img_settings.Brightness += 1
+                        if img_settings.Brightness > 10:
+                            img_settings.Brightness = 10
                     image.SetImagingSettings(irequest)
                     self.add_log("Increasing brightness to " + str(img_settings.Brightness) + "...")
 
                 # уменьшение яркости (4 кнопка)
                 if joystick.get_button(3) == 1:
                     if img_settings.Brightness > 0:
-                        img_settings.Brightness -= 5
+                        img_settings.Brightness -= 1
                         if img_settings.Brightness < 0:
                             img_settings.Brightness = 0
                     image.SetImagingSettings(irequest)
@@ -295,17 +317,17 @@ class Application(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                 # увеличение контрастности (5 кнопка)
                 if joystick.get_button(4) == 1:
-                    if img_settings.Contrast < 100:
-                        img_settings.Contrast += 5
-                        if img_settings.Contrast > 100:
-                            img_settings.Contrast = 100
+                    if img_settings.Contrast < 10:
+                        img_settings.Contrast += 1
+                        if img_settings.Contrast > 10:
+                            img_settings.Contrast = 10
                     image.SetImagingSettings(irequest)
                     self.add_log("Increasing contrast to " + str(img_settings.Contrast) + "...")
 
                 # уменьшение контрастности (3 кнопка)
                 if joystick.get_button(2) == 1:
                     if img_settings.Contrast > 0:
-                        img_settings.Contrast -= 5
+                        img_settings.Contrast -= 1
                         if img_settings.Contrast < 0:
                             img_settings.Contrast = 0
                     image.SetImagingSettings(irequest)
@@ -384,80 +406,72 @@ class Application(QtWidgets.QMainWindow, design.Ui_MainWindow):
         pygame.quit()
 
 
+def maprange(a, b, s):
+	(a1, a2), (b1, b2) = a, b
+	return b1 + ((s - a1) * (b2 - b1) / (a2 - a1))
+
+
 def open_config():
     file = open("config.txt", "r")
+    length = file_length(file)
+    length /= 4
+    file = open("config.txt", "r")
+    num = 0
+    ip = {}
+    port = {}
+    login = {}
+    password = {}
+    while num < length:
+        temp = file.readline().split("\n")
+        ip[num] = temp[0]
 
-    ip = file.readline().split("\n")
-    ip = ip[0]
+        temp = (file.readline().split("\n"))
+        port[num] = int(temp[0])
 
-    port = (file.readline().split("\n"))
-    port = int(port[0])
+        temp = file.readline().split("\n")
+        login[num] = temp[0]
 
-    login = file.readline().split("\n")
-    login = login[0]
+        temp = file.readline().split("\n")
+        password[num] = temp[0]
 
-    password = file.readline().split("\n")
-    password = password[0]
+        num += 1
 
-    return ip, port, login, password
+    file.close()
+
+    return ip, port, login, password, length
 
 
-def perform_move(ptz, request, timeout):
-    # Start continuous move
-    # print(request)
+def file_length(file):
+    lines = 0
+    for line in file:
+        lines += 1
+    file.close()
+    return lines
+
+
+def find_key(dict, value):
+    return [k for k, v in dict.iteritems() if v == value][0]
+
+
+def move_horizontal(ptz, request, joystick):
+    request.Velocity.PanTilt.x = maprange((-1, 1), (XMIN, XMAX), joystick.get_axis(X_AXIS))
+    request.Velocity.PanTilt.y = 0
+    request.Velocity.Zoom.x = 0
     ptz.ContinuousMove(request)
-    # Wait a certain time
-    sleep(timeout)
-    # Stop continuous move
-    # ptz.Stop({'ProfileToken': request.ProfileToken})
 
 
-def move_up(ptz, request, joystick, timeout=0):
-    # print('move up...')
+def move_vertical(ptz, request, joystick):
     request.Velocity.PanTilt.x = 0
-    request.Velocity.PanTilt.y = joystick.get_axis(1) * YMAX
+    request.Velocity.PanTilt.y = maprange((-1, 1), (YMIN, YMAX), joystick.get_axis(Y_AXIS))
     request.Velocity.Zoom.x = 0
-    perform_move(ptz, request, timeout)
+    ptz.ContinuousMove(request)
 
 
-def move_down(ptz, request, joystick, timeout=0):
-    # print('move down...')
-    request.Velocity.PanTilt.x = 0
-    request.Velocity.PanTilt.y = joystick.get_axis(1) * YMAX
-    request.Velocity.Zoom.x = 0
-    perform_move(ptz, request, timeout)
-
-
-def move_right(ptz, request, joystick, timeout=0):
-    # print('move right...')
-    request.Velocity.PanTilt.x = joystick.get_axis(0) * XMAX
-    request.Velocity.PanTilt.y = 0
-    request.Velocity.Zoom.x = 0
-    perform_move(ptz, request, timeout)
-
-
-def move_left(ptz, request, joystick, timeout=0):
-    # print('move left...')
-    request.Velocity.PanTilt.x = joystick.get_axis(0) * XMAX
-    request.Velocity.PanTilt.y = 0
-    request.Velocity.Zoom.x = 0
-    perform_move(ptz, request, timeout)
-
-
-def zoom_in(ptz, request, joystick, timeout=0):
-    # print('zoom in...')
+def zoom(ptz, request, joystick):
     request.Velocity.PanTilt.x = 0
     request.Velocity.PanTilt.y = 0
-    request.Velocity.Zoom.x = joystick.get_axis(4) * ZMAX
-    perform_move(ptz, request, timeout)
-
-
-def zoom_out(ptz, request, joystick, timeout=0):
-    # print('zoom out...')
-    request.Velocity.PanTilt.x = 0
-    request.Velocity.PanTilt.y = 0
-    request.Velocity.Zoom.x = joystick.get_axis(4) * ZMAX
-    perform_move(ptz, request, timeout)
+    request.Velocity.Zoom.x = maprange((-1, 1), (ZMIN, ZMAX), joystick.get_axis(Z_AXIS))
+    ptz.ContinuousMove(request)
 
 
 def main():
@@ -472,6 +486,11 @@ def main():
     window = Application()  # создаём объект класса Application
     window.show()  # показываем окно
     window.disconnectBtn.setDisabled(True)
+    ip, port, login, password, length = open_config()
+    num = 0
+    while num < length:
+        window.comboBox.addItem(ip[num])
+        num += 1
     # window.listWidget.addItem(str("Files in '%s': %s" % (cwd, files)))
     qt_app.exec_()  # запускаем приложение
 
