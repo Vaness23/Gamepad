@@ -12,8 +12,8 @@ zeep.xsd.simple.AnySimpleType.pythonvalue = zeep_pythonvalue  # нужно дл�
 # подключение к камере
 ip = '192.168.15.42'
 port = 80
-login = 'admin'
-password = 'Supervisor'
+login = 'ivanbobkov77'
+password = 'kmfj4XhUtQyMuC6G'
 mycam = ONVIFCamera(ip, port, login, password)  # инициализация камеры
 
 # создание сервисов
@@ -43,7 +43,6 @@ grequest.ProfileToken = media_token  # назначение токена
 preset = ptz.GetPresets(grequest)[0]  # достаем структуру Position из пресетов
 arequest.Position = preset.PTZPosition  # присваиваем структуру
 arequest.Speed = media_profile.PTZConfiguration.DefaultPTZSpeed  # достаем структуру Speed
-
 
 # создание запроса continuous move
 crequest = ptz.create_type('ContinuousMove')
@@ -123,7 +122,7 @@ def focus(irequest, img_settings, image, move_request, speed):
     image.Move(move_request)  # отправка запроса
 
 
-# # пример использования функций
+# пример использования функций
 img_settings.Focus.AutoFocusMode = 'AUTO'  # включение автофокуса
 irequest.ImagingSettings = img_settings  # обновление настроек
 image.SetImagingSettings(irequest)  # отправка запроса на отключение автофокуса
