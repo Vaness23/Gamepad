@@ -188,15 +188,15 @@ def check_cont_focus(move_options):
 
 if check_abs_move(ptz_configuration_options):  # проверка absolute move
     abs_move(arequest, ptz, 0.2, -0.5, 0.3)  # absolute move в точку (x = 0.2, y = -0.5, z = 0.3)
-    # sleep(3)  # ожидание: 3 секунды
+    sleep(3)  # ожидание: 3 секунды
 
 if check_ptz(ptz, media_token):  # проверка ptz координат
-    move_horizontal(crequest, ptz, 0.3, 3)  # continuous move вправо со скоростью 0.6 в течение 3 секунд
+    move_horizontal(crequest, ptz, 0.6, 3)  # continuous move вправо со скоростью 0.6 в течение 3 секунд
     move_vertical(crequest, ptz, 0.4, 2)  # continuous move вверх со скоростью 0.4 в течение 2 секунд
     zoom(crequest, ptz, 1, 4)  # приближение в течение 4 секунд
-    # sleep(3)
+    sleep(3)
     zoom(crequest, ptz, -1, 2)  # отдаление в течение 2 секунд
-    # sleep(3)
+    sleep(3)
 
 img_settings.Focus.AutoFocusMode = 'AUTO'  # включение автофокуса
 irequest.ImagingSettings = img_settings  # обновление настроек
