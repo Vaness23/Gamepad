@@ -12,8 +12,8 @@ zeep.xsd.simple.AnySimpleType.pythonvalue = zeep_pythonvalue  # нужно дл�
 # подключение к камере
 ip = '192.168.15.42'
 port = 80
-login = 'admin'
-password = 'Supervisor'
+login = 'ivanbobkov77'
+password = 'kmfj4XhUtQyMuC6G'
 mycam = ONVIFCamera(ip, port, login, password)  # инициализация камеры
 
 # создание сервисов
@@ -135,8 +135,10 @@ def check_abs_move(ptz_configuration_options):
     # проверка полученного значения
     if abs_pt_pos_space and abs_zoom_pos_space:
         print("Camera supports absolute move")
+        return True
     else:
         print("Camera does not support absolute move")
+        return False
 
 
 # проверка: отдаёт ли свои текущие координаты PTZ
@@ -146,23 +148,70 @@ def check_ptz(ptz, media_token):
     # проверка полученных координат
     if pos.PanTilt.space or pos.Zoom.space:
         print("PTZ Position was received")
+        return True
     else:
         print("PTZ Position is unknown")
+        return False
+
+
+# проверка на способность камеры выполнять continuous move фокуса
+def check_abs_focus(move_options):
+    if move_options.Absolute:
+        print('Focus supports absolute move')
+        return True
+    else:
+        print('Focus does not support absolute move')
+        return False
+
+
+# проверка на способность камеры выполнять relative move фокуса
+def check_rel_focus(move_options):
+    if move_options.Relative:
+        print('Focus supports relative move')
+        return True
+    else:
+        print('Focus does not support relative move')
+        return False
+
+
+# проверка на способность камеры выполнять continuous move фокуса
+def check_cont_focus(move_options):
+    if move_options.Continuous:
+        print('Focus supports continuous move')
+        return True
+    else:
+        print('Focus does not support continuous move')
+        return False
 
 
 # пример использования функций
-check_abs_move(ptz_configuration_options)  # проверка absolute move
-check_ptz(ptz, media_token)  # проверка ptz координат
+
+if check_abs_move(ptz_configuration_options):  # проверка absolute move
+    abs_move(arequest, ptz, 0.2, -0.5, 0.3)  # absolute move в точку (x = 0.2, y = -0.5, z = 0.3)
+    # sleep(3)  # ожидание: 3 секунды
+
+if check_ptz(ptz, media_token):  # проверка ptz координат
+    move_horizontal(crequest, ptz, 0.3, 3)  # continuous move вправо со скоростью 0.6 в течение 3 секунд
+    move_vertical(crequest, ptz, 0.4, 2)  # continuous move вверх со скоростью 0.4 в течение 2 секунд
+    zoom(crequest, ptz, 1, 4)  # приближение в течение 4 секунд
+    # sleep(3)
+    zoom(crequest, ptz, -1, 2)  # отдаление в течение 2 секунд
+    # sleep(3)
+
 img_settings.Focus.AutoFocusMode = 'AUTO'  # включение автофокуса
 irequest.ImagingSettings = img_settings  # обновление настроек
 image.SetImagingSettings(irequest)  # отправка запроса на отключение автофокуса
-abs_move(arequest, ptz, 0.2, -0.5, 0.3)  # absolute move в точку (x = 0.2, y = -0.5, z = 0.3)
-sleep(3)  # ожидание: 3 секунды
-move_horizontal(crequest, ptz, 0.3, 3)  # continuous move вправо со скоростью 0.6 в течение 3 секунд
-move_vertical(crequest, ptz, 0.4, 2)  # continuous move вверх со скоростью 0.4 в течение 2 секунд
-zoom(crequest, ptz, 1, 4)  # приближение в течение 4 секунд
-sleep(3)
-zoom(crequest, ptz, -1, 2)  # отдаление в течение 2 секунд
-sleep(3)
-focus(irequest, img_settings, image, move_request, -5.0)  # изменение фокуса на -5.0
-sleep(3)
+
+# проверка фокуса на absolute move
+if check_abs_focus(move_options):
+    print('Performing absolute move...')
+    # камеры в лаборатории не поддерживают absolute move
+
+# проверка фокуса на relative move
+if check_rel_focus(move_options):
+    print('Performing relative move...')
+    # камеры в лаборатории не поддерживают relative move
+
+if check_cont_focus(move_options):
+    focus(irequest, img_settings, image, move_request, -5.0)  # изменение фокуса на -5.0
+    sleep(3)
