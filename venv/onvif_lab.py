@@ -209,5 +209,5 @@ if check_rel_focus(move_options):
     # камеры в лаборатории не поддерживают relative move
 
 if check_cont_focus(move_options):
-    focus(irequest, img_settings, image, move_request, -5.0)  # изменение фокуса на -5.0
+    focus(irequest, img_settings, image, move_request, -1.0)  # изменение фокуса на -1.0
     sleep(3)
