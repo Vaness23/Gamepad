@@ -12,8 +12,8 @@ zeep.xsd.simple.AnySimpleType.pythonvalue = zeep_pythonvalue  # нужно дл�
 # подключение к камере
 ip = '192.168.15.42'
 port = 80
-login = 'ivanbobkov77'
-password = 'kmfj4XhUtQyMuC6G'
+login = 'admin'
+password = 'Supervisor'
 mycam = ONVIFCamera(ip, port, login, password)  # инициализация камеры
 
 # создание сервисов
@@ -34,6 +34,11 @@ YMAX = media_profile.PTZConfiguration.PanTiltLimits.Range.YRange.Max
 YMIN = media_profile.PTZConfiguration.PanTiltLimits.Range.YRange.Min
 ZMAX = media_profile.PTZConfiguration.ZoomLimits.Range.XRange.Max
 ZMIN = media_profile.PTZConfiguration.ZoomLimits.Range.XRange.Min
+
+# запрос на получение опций конфигурации
+request = ptz.create_type('GetConfigurationOptions')
+request.ConfigurationToken = media_profile.PTZConfiguration.token
+ptz_configuration_options = ptz.GetConfigurationOptions(request)
 
 # создание запроса absolute move
 arequest = ptz.create_type('AbsoluteMove')
@@ -122,12 +127,37 @@ def focus(irequest, img_settings, image, move_request, speed):
     image.Move(move_request)  # отправка запроса
 
 
+# проверка поддерживает ли absolute move
+def check_abs_move(ptz_configuration_options):
+    # получение конфигурации absolute move
+    abs_pt_pos_space = ptz_configuration_options.Spaces.AbsolutePanTiltPositionSpace
+    abs_zoom_pos_space = ptz_configuration_options.Spaces.AbsoluteZoomPositionSpace
+    # проверка полученного значения
+    if abs_pt_pos_space and abs_zoom_pos_space:
+        print("Camera supports absolute move")
+    else:
+        print("Camera does not support absolute move")
+
+
+# проверка: отдаёт ли свои текущие координаты PTZ
+def check_ptz(ptz, media_token):
+    # получение текущих PTZ
+    pos = ptz.GetStatus({'ProfileToken' : media_token}).Position
+    # проверка полученных координат
+    if pos.PanTilt.space or pos.Zoom.space:
+        print("PTZ Position was received")
+    else:
+        print("PTZ Position is unknown")
+
+
 # пример использования функций
+check_abs_move(ptz_configuration_options)  # проверка absolute move
+check_ptz(ptz, media_token)  # проверка ptz координат
 img_settings.Focus.AutoFocusMode = 'AUTO'  # включение автофокуса
 irequest.ImagingSettings = img_settings  # обновление настроек
 image.SetImagingSettings(irequest)  # отправка запроса на отключение автофокуса
 abs_move(arequest, ptz, 0.2, -0.5, 0.3)  # absolute move в точку (x = 0.2, y = -0.5, z = 0.3)
-sleep(3)  # ожидание - 3 секунды
+sleep(3)  # ожидание: 3 секунды
 move_horizontal(crequest, ptz, 0.3, 3)  # continuous move вправо со скоростью 0.6 в течение 3 секунд
 move_vertical(crequest, ptz, 0.4, 2)  # continuous move вверх со скоростью 0.4 в течение 2 секунд
 zoom(crequest, ptz, 1, 4)  # приближение в течение 4 секунд
@@ -135,4 +165,4 @@ sleep(3)
 zoom(crequest, ptz, -1, 2)  # отдаление в течение 2 секунд
 sleep(3)
 focus(irequest, img_settings, image, move_request, -5.0)  # изменение фокуса на -5.0
-sleep(3)  # ожидание - 3 секунды
+sleep(3)
