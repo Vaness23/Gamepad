@@ -198,10 +198,6 @@ if check_ptz(ptz, media_token):  # проверка ptz координат
     zoom(crequest, ptz, -1, 2)  # отдаление в течение 2 секунд
     sleep(3)
 
-img_settings.Focus.AutoFocusMode = 'AUTO'  # включение автофокуса
-irequest.ImagingSettings = img_settings  # обновление настроек
-image.SetImagingSettings(irequest)  # отправка запроса на отключение автофокуса
-
 # проверка фокуса на absolute move
 if check_abs_focus(move_options):
     print('Performing absolute move...')
