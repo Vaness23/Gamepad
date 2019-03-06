@@ -67,6 +67,7 @@ class Application(QtWidgets.QMainWindow, design.Ui_MainWindow):
         joystick.init()  # инициализация джойстика
         self.add_log("Joystick system name: " + joystick.get_name())  # вывод имени джойстика
 
+        # есть три попытки для подключения к камере
         mycam = None
         attempts = 3
         while mycam is None:
@@ -134,13 +135,6 @@ class Application(QtWidgets.QMainWindow, design.Ui_MainWindow):
         ZMAX = ptz_configuration_options.Spaces.ContinuousZoomVelocitySpace[0].XRange.Max
         ZMIN = ptz_configuration_options.Spaces.ContinuousZoomVelocitySpace[0].XRange.Min
 
-        # self.add_log("XMAX: " + str(XMAX))
-        # self.add_log("XMIN: " + str(XMIN))
-        # self.add_log("YMAX: " + str(YMAX))
-        # self.add_log("YMIN: " + str(YMIN))
-        # self.add_log("ZMAX: " + str(ZMAX))
-        # self.add_log("ZMIN: " + str(ZMIN))
-
         s = -1
         while s < 1:
         	print("%2g maps to %g" % (s, maprange((-1, 1), (XMIN, XMAX), s)))
@@ -206,12 +200,12 @@ class Application(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     isMoving = False
                     OX = False
 
-                if -0.1 <= joystick.get_axis(Y_AXIS) <= 0.2 and OY:
+                if -0.2 <= joystick.get_axis(Y_AXIS) <= 0.2 and OY:
                     ptz.Stop({'ProfileToken': request.ProfileToken})
                     isMoving = False
                     OY = False
 
-                if -0.1 <= joystick.get_axis(Z_AXIS) <= 0.3 and OZ:
+                if -0.3 <= joystick.get_axis(Z_AXIS) <= 0.3 and OZ:
                     ptz.Stop({'ProfileToken': request.ProfileToken})
                     isMoving = False
                     OZ = False
@@ -406,11 +400,13 @@ class Application(QtWidgets.QMainWindow, design.Ui_MainWindow):
         pygame.quit()
 
 
+# мапинг значений осей
 def maprange(a, b, s):
 	(a1, a2), (b1, b2) = a, b
 	return b1 + ((s - a1) * (b2 - b1) / (a2 - a1))
 
 
+# считывание данных о камере из текстового файла
 def open_config():
     file = open("config.txt", "r")
     length = file_length(file)
@@ -441,6 +437,7 @@ def open_config():
     return ip, port, login, password, length
 
 
+# подсчет длины файла
 def file_length(file):
     lines = 0
     for line in file:
@@ -453,6 +450,7 @@ def find_key(dict, value):
     return [k for k, v in dict.iteritems() if v == value][0]
 
 
+# движение камеры по горизонтали
 def move_horizontal(ptz, request, joystick):
     request.Velocity.PanTilt.x = maprange((-1, 1), (XMIN, XMAX), joystick.get_axis(X_AXIS))
     request.Velocity.PanTilt.y = 0
@@ -460,6 +458,7 @@ def move_horizontal(ptz, request, joystick):
     ptz.ContinuousMove(request)
 
 
+# движение камеры по вертикали
 def move_vertical(ptz, request, joystick):
     request.Velocity.PanTilt.x = 0
     request.Velocity.PanTilt.y = maprange((-1, 1), (YMIN, YMAX), joystick.get_axis(Y_AXIS))
@@ -467,6 +466,7 @@ def move_vertical(ptz, request, joystick):
     ptz.ContinuousMove(request)
 
 
+# зумирование
 def zoom(ptz, request, joystick):
     request.Velocity.PanTilt.x = 0
     request.Velocity.PanTilt.y = 0
@@ -477,11 +477,6 @@ def zoom(ptz, request, joystick):
 def main():
     zeep.xsd.simple.AnySimpleType.pythonvalue = zeep_pythonvalue  # нужно для корректной работы камеры
 
-    # import os
-    # cwd = os.getcwd()  # Get the current working directory (cwd)
-    # files = os.listdir(cwd)  # Get all the files in that directory
-    # print("Files in '%s': %s" % (cwd, files))
-
     qt_app = QtWidgets.QApplication(sys.argv)  # новый экземпляр QApplication
     window = Application()  # создаём объект класса Application
     window.show()  # показываем окно
@@ -491,7 +486,6 @@ def main():
     while num < length:
         window.comboBox.addItem(ip[num])
         num += 1
-    # window.listWidget.addItem(str("Files in '%s': %s" % (cwd, files)))
     qt_app.exec_()  # запускаем приложение
 
 
